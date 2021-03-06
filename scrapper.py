@@ -33,3 +33,31 @@ class Scrapper:
                                           portal="olx.pl")
 
             print(f"Loading... Done {round(page / last_page * 100, 2)}%")
+
+
+    def get_offers_from_praca(self):
+        self.URL = 'https://www.praca.pl'
+        self.apply_url = 'https://www.praca.pl/aplikuj_'
+        page = 1
+        while True:
+            page_content = get(f'{self.URL}/oferty-pracy_{page}')
+            bs = BeautifulSoup(page_content.content, features='html.parser')
+            for offer in bs.find_all('li', class_='listing__item'):
+                if offer.find('a', class_='job-id'):
+                    offer_url = offer.find('a', class_='job-id')['href'].split('#')[0]
+                    offer_id = offer_url.split('_')[-1]
+                    offer_url = f'{self.URL}{offer_url}'
+                    if self.db.get_offer_id(offer_url=offer_url) == -1:
+                        location = offer.find('div', class_='listing__location').get_text()
+                        name = offer.find('a', class_='job-id').get_text().strip()
+                        apply_url = f"{self.apply_url}{offer_id}"
+                        self.db.add_new_offer(name=name,
+                                              offer_url=offer_url,
+                                              apply_url=apply_url,
+                                              location=location,
+                                              portal="praca.pl")
+            if bs.find('a', class_='pagination__item--next'):
+                page += 1
+                print(page)
+                continue
+            break
