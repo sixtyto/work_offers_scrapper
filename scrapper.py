@@ -61,3 +61,25 @@ class Scrapper:
                 print(page)
                 continue
             break
+
+    def get_offers_from_pracuj(self):
+        self.URL = 'https://www.pracuj.pl/praca/'
+        last_page = int(
+            BeautifulSoup(get(self.URL).content, features='html.parser')
+                          .findAll('li', class_='pagination_element-page')[-1].get_text())
+
+        for page in range(1, last_page + 1):
+            page_content = get(f'{self.URL}?pn={page}')
+            bs = BeautifulSoup(page_content.content, features='html.parser')
+            for offer in bs.find_all('li', class_='results__list-container-item'):
+                if offer.find('a', class_='offer-details__title-link'):
+                    offer_url = offer.find('a', class_='offer-details__title-link')['href']
+                    if self.db.get_offer_id(offer_url=offer_url) == -1:
+                        name = offer.find("h3", class_='offer-details__title').get_text().strip()
+                        location = offer.find('li', class_='offer-labels__item--location').get_text().strip()
+                        self.db.add_new_offer(name=name,
+                                              offer_url=offer_url,
+                                              location=location,
+                                              portal="pracuj.pl")
+
+            print(f"Loading... Done {round(page / last_page * 100, 2)}%")
